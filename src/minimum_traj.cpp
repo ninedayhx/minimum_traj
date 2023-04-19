@@ -10,6 +10,7 @@
  * @param end_acc
  */
 minimum_traj::minimum_traj(
+    unsigned int minimum_type,
     const Eigen::MatrixXd &Pos,
     const Eigen::Vector3d &Start_val,
     const Eigen::Vector3d &Start_acc,
@@ -48,7 +49,6 @@ minimum_traj::minimum_traj(
     R = Eigen::MatrixXd::Zero(2 * physical_order * seg_num, 2 * physical_order * seg_num);
 
     // init D_fixed
-    // 3 for x,y,z
     D_fixed.row(0) = Pos_tmp.row(0);
     D_fixed.row(1) = Start_val.transpose();
     D_fixed.row(2) = Start_acc.transpose();
@@ -61,6 +61,9 @@ minimum_traj::minimum_traj(
         D_fixed.row(2 * i + 6 + 1) = Pos_tmp.row(i + 1);
     }
 
+    cout << "D_fixed" << endl
+         << D_fixed << endl;
+
     D_total.row(0) = Pos_tmp.row(0);
     D_total.row(1) = Start_val.transpose();
     D_total.row(2) = Start_acc.transpose();
@@ -72,6 +75,9 @@ minimum_traj::minimum_traj(
         D_total.row(2 * physical_order * i + 3) = Pos_tmp.row(i + 1);
         D_total.row(2 * physical_order * i + 3 + 3) = Pos_tmp.row(i + 1);
     }
+
+    cout << "D_total" << endl
+         << D_total << endl;
 
     // init A_total
     // A_total.resize(seg_num * 6, seg_num * 6);
@@ -97,8 +103,6 @@ minimum_traj::minimum_traj(
                 A_one_t(i + 3, j) = A_one(i + 3, j) * pow(Time(M), order);
             }
         }
-        // cout << "A_one_t" << endl
-        //      << A_one_t << endl;
         A_total.block(M * 6, M * 6, 6, 6) = A_one_t;
         A_one_t = Eigen::MatrixXd::Zero(6, 6);
     }
@@ -131,7 +135,7 @@ minimum_traj::minimum_traj(
 
     D_total_selected = C_select_T * D_total;
 
-    cout << endl
+    cout << "D_total_selected" << endl
          << D_total_selected << endl;
 
     R = C_select_T.transpose() * A_total.transpose().inverse() * Q_total * A_total.inverse() * C_select_T;
@@ -141,10 +145,17 @@ minimum_traj::minimum_traj(
     R_PF = R.block(fixed_coff_num, 0, R.rows() - fixed_coff_num, fixed_coff_num);
     R_PP = R.block(fixed_coff_num, fixed_coff_num, R.rows() - fixed_coff_num, R.rows() - fixed_coff_num);
 
+    D_P_optimal = -R_PP.inverse() * R_FP.transpose() * D_fixed;
+
     D_total_selected.block(0, 0, fixed_coff_num, 3) = D_fixed;
     D_total_selected.block(fixed_coff_num, 0, all_coff_num - fixed_coff_num, 3) = D_P_optimal;
 
     Poly_coff_total = A_total.inverse() * C_select_T.transpose() * D_total_selected;
+    // std::ofstream fout("poly_coff_all.csv", std::ios::binary);
+    // fout << Poly_coff_total << std::endl;
+    // fout.flush();
+    // cout << "Poly_coff_total" << endl
+    //      << Poly_coff_total << endl;
 }
 
 minimum_traj::~minimum_traj()
@@ -208,4 +219,33 @@ int minimum_traj::Factorial(int x)
     for (int i = x; i > 0; i--)
         fac = fac * i;
     return fac;
+}
+
+Eigen::MatrixXd minimum_traj::Cal_minimum_traj(Eigen::VectorXd &Time)
+{
+    unsigned int seg_num = Time.size();
+    Eigen::MatrixXd traj_res = Eigen::MatrixXd::Zero(3, 100 * seg_num);
+    for (int i = 0; i < seg_num; i++)
+    {
+        for (int j = 0; j < 100; j++)
+        {
+            double t = j * 0.01;
+            for (int k = 0; k < 6; k++)
+            {
+                traj_res(0, i * 100 + j) += Poly_coff_total(i * 6 + k, 0) * pow(t, k);
+                traj_res(1, i * 100 + j) += Poly_coff_total(i * 6 + k, 1) * pow(t, k);
+                traj_res(2, i * 100 + j) += Poly_coff_total(i * 6 + k, 2) * pow(t, k);
+            }
+            cout << t << endl;
+        }
+    }
+    // std::ofstream fout("matrixTest.csv", std::ios::binary);
+    // fout << traj_res << std::endl;
+    // fout.flush();
+    return traj_res;
+}
+
+Eigen::MatrixXd minimum_traj::Get_Poly_coff_total()
+{
+    return Poly_coff_total;
 }

@@ -28,11 +28,14 @@ else()
 endif()
 
 find_package(Eigen3 REQUIRED)
+find_package(Python3 COMPONENTS Development NumPy REQUIRED)
 
 include_directories(
 # ${PROJECT_SOURCE_DIR}
 include
 ${EIGEN3_INCLUDE_DIR}
+${Python3_INCLUDE_DIRS} 
+${Python3_NumPy_INCLUDE_DIRS}
 )
 
 add_library(minimum_traj SHARED
@@ -46,4 +49,7 @@ add_executable(minimum_jerk
 src/minimum_jerk.cpp
 )
 target_link_libraries(minimum_jerk 
-minimum_traj)
+minimum_traj
+Python3::Python 
+Python3::NumPy
+)

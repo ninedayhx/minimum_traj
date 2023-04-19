@@ -11,10 +11,15 @@
 #ifndef __MINI_TRAJ_H
 #define __MINI_TRAJ_H
 #include <iostream>
+#include <fstream>
 #include "eigen3/Eigen/Eigen"
 #include <cmath>
+#include <vector>
 
 using namespace std;
+
+#define JERK 3
+#define SNAP 4
 
 class minimum_traj
 {
@@ -81,6 +86,7 @@ public:
     Eigen::MatrixXd Poly_coff_total;
     /* function */
     minimum_traj(
+        unsigned int minimum_type,
         const Eigen::MatrixXd &Pos,
         const Eigen::Vector3d &Start_val,
         const Eigen::Vector3d &Start_acc,
@@ -91,6 +97,10 @@ public:
     ~minimum_traj();
 
     bool Cal_C_select_T(Eigen::MatrixXd &C_T);
+
+    Eigen::MatrixXd Cal_minimum_traj(Eigen::VectorXd &Time);
+
+    Eigen::MatrixXd Get_Poly_coff_total();
 };
 
 #endif
