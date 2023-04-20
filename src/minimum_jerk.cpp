@@ -25,7 +25,7 @@ int main()
     Eigen::Vector3d start_v, end_v, start_a, end_a;
     Eigen::VectorXd Time(4);
     postion << 0, 1, 2, 3, 5,
-        0, 1, 3, 3, 6,
+        0, 1, 6, 3, 6,
         1, 1, 2, 3, 2;
     start_v << 0, 0, 0;
     end_v << 0, 0, 0;
