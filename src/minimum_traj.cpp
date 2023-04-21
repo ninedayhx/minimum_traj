@@ -11,69 +11,77 @@
  */
 minimum_traj::minimum_traj(
     unsigned int minimum_type,
+    unsigned int dim,
+    unsigned int poly_order,
+    unsigned int physical_num,
     const Eigen::MatrixXd &Pos,
-    const Eigen::Vector3d &Start_val,
-    const Eigen::Vector3d &Start_acc,
-    const Eigen::Vector3d &End_val,
-    const Eigen::Vector3d &End_acc,
+    const Eigen::MatrixXd &dStart,
+    const Eigen::MatrixXd &dEnd,
     const Eigen::VectorXd &Time)
 {
     // pos is a 3*n matrix D_fixed is a n*3 matrix
     // for convenience， transform the pos to n*3
     Eigen::MatrixXd Pos_tmp = Pos.transpose();
 
-    poly_order = 5;
+    // poly_order = 5;
     poly_coff_num = poly_order + 1;
-    physical_num = 3;
+    // physical_num = 3;
 
     points_num = Time.size() + 1;
     seg_num = Time.size();
 
-    fixed_coff_num = 3 * 2 + (points_num - 2) * 2;
-    all_coff_num = 3 * 2 * seg_num;
+    fixed_coff_num = physical_num * 2 + (points_num - 2) * 2;
+    all_coff_num = poly_coff_num * (2 + 2 * (points_num - 2));
 
-    D_fixed = Eigen::MatrixXd::Zero(fixed_coff_num, 3);
-    D_P_optimal = Eigen::MatrixXd::Zero(all_coff_num - fixed_coff_num, 3);
-    D_total = Eigen::MatrixXd::Zero(all_coff_num, 3);
-    D_total_selected = Eigen::MatrixXd::Zero(all_coff_num, 3);
+    D_fixed = Eigen::MatrixXd::Zero(fixed_coff_num, dim);
+    D_P_optimal = Eigen::MatrixXd::Zero(all_coff_num - fixed_coff_num, dim);
+    D_total = Eigen::MatrixXd::Zero(all_coff_num, dim);
+    D_total_selected = Eigen::MatrixXd::Zero(all_coff_num, dim);
 
-    A_total = Eigen::MatrixXd::Zero(seg_num * 6, seg_num * 6);
-    A_one = Eigen::MatrixXd::Zero(6, 6);
-    A_one_t = Eigen::MatrixXd::Zero(6, 6);
+    A_total = Eigen::MatrixXd::Zero(seg_num * physical_num * 2, seg_num * physical_num * 2);
+    A_one = Eigen::MatrixXd::Zero(physical_num * 2, poly_coff_num);
+    A_one_t = Eigen::MatrixXd::Zero(physical_num * 2, physical_num * 2);
 
-    Q_total = Eigen::MatrixXd::Zero(seg_num * 6, seg_num * 6);
-    Q_one = Eigen::MatrixXd::Zero(6, 6);
-    Q_one_t = Eigen::MatrixXd::Zero(6, 6);
+    Q_total = Eigen::MatrixXd::Zero(seg_num * poly_coff_num, seg_num * poly_coff_num);
+    Q_one = Eigen::MatrixXd::Zero(poly_coff_num, poly_coff_num);
+    Q_one_t = Eigen::MatrixXd::Zero(poly_coff_num, poly_coff_num);
 
-    C_select_T = Eigen::MatrixXd::Zero(2 * physical_num * seg_num, 2 * physical_num * seg_num);
-    R = Eigen::MatrixXd::Zero(2 * physical_num * seg_num, 2 * physical_num * seg_num);
+    C_select_T = Eigen::MatrixXd::Zero(A_total.cols(), D_total.rows());
+
+    R = Eigen::MatrixXd::Zero(all_coff_num, all_coff_num);
 
     // init D_fixed
-    D_fixed.row(0) = Pos_tmp.row(0);
-    D_fixed.row(1) = Start_val.transpose();
-    D_fixed.row(2) = Start_acc.transpose();
-    D_fixed.row(3) = Pos_tmp.row(points_num - 1);
-    D_fixed.row(4) = End_val.transpose();
-    D_fixed.row(5) = End_acc.transpose();
-    for (int i = 0; i < points_num - 2; i++)
-    {
-        D_fixed.row(2 * i + 6) = Pos_tmp.row(i + 1);
-        D_fixed.row(2 * i + 6 + 1) = Pos_tmp.row(i + 1);
-    }
+    // there is no nedd to init D_fixed
+    // we can just init it by select D_total
+    // D_fixed.row(0) = Pos_tmp.row(0);
+    // D_fixed.row(1) = Start_val.transpose();
+    // D_fixed.row(2) = Start_acc.transpose();
+    // D_fixed.row(3) = Pos_tmp.row(points_num - 1);
+    // D_fixed.row(4) = End_val.transpose();
+    // D_fixed.row(5) = End_acc.transpose();
+    // for (int i = 0; i < physical_num; i++)
+    // {
+    //     D_fixed.row
+    // }
+    // for (int i = 0; i < points_num - 2; i++)
+    // {
+    //     D_fixed.row(2 * i + physical_num * 2) = Pos_tmp.row(i + 1);
+    //     D_fixed.row(2 * i + physical_num * 2 + 1) = Pos_tmp.row(i + 1);
+    // }
 
-    cout << "D_fixed" << endl
-         << D_fixed << endl;
+    // cout << "D_fixed" << endl
+    //      << D_fixed << endl;
 
+    // dStart(physical_num-1,dim)
+    // dEnd(physical_num-1,dim)
+    // the solve of jerk and snap is meanless
+    // if (physical_num > 3) the jerk and snap will be zero
     D_total.row(0) = Pos_tmp.row(0);
-    D_total.row(1) = Start_val.transpose();
-    D_total.row(2) = Start_acc.transpose();
-    D_total.row(all_coff_num - 3) = Pos_tmp.row(points_num - 1);
-    D_total.row(all_coff_num - 2) = End_val.transpose();
-    D_total.row(all_coff_num - 1) = End_acc.transpose();
-    for (int i = 0; i < points_num - 2; i++)
+    D_total.row(all_coff_num - physical_num) = Pos_tmp.row(points_num - 1);
+    for (int i = 0; i < physical_num - 1; i++)
     {
-        D_total.row(2 * physical_num * i + 3) = Pos_tmp.row(i + 1);
-        D_total.row(2 * physical_num * i + 3 + 3) = Pos_tmp.row(i + 1);
+        D_total.row(1 + i) = dStart.row(i);
+        D_total.row(all_coff_num - physical_num + 1 + i) = dEnd.row(i);
     }
 
     cout << "D_total" << endl
@@ -82,29 +90,28 @@ minimum_traj::minimum_traj(
     // init A_total
     // A_total.resize(seg_num * 6, seg_num * 6);
     // caluate A by time segments
-    if (minimum_type == JERK)
+    for (int row = 0; row < physical_num; row++)
     {
-        A_one << 1, 0, 0, 0, 0, 0,
-            0, 1, 0, 0, 0, 0,
-            0, 0, 2, 0, 0, 0,
-            1, 1, 1, 1, 1, 1,
-            0, 1, 2, 3, 4, 5,
-            0, 0, 2, 6, 12, 20;
+        for (int col = 0; col < poly_coff_num; col++)
+        {
+            if (row == col)
+            {
+                A_one(row, col) = Fac(row);
+            }
+            if (row <= col)
+            {
+                A_one(row + physical_num, col) = Fac(col) / Fac(col - row);
+            }
+        }
     }
-    else if (minimum_type == SNAP)
-    {
-        A_one << 1, 0, 0, 0, 0, 0,
-            0, 1, 0, 0, 0, 0,
-            0, 0, 2, 0, 0, 0,
-            1, 1, 1, 1, 1, 1,
-            0, 1, 2, 3, 4, 5,
-            0, 0, 2, 6, 12, 20;
-    }
+    cout << "A_one" << endl
+         << A_one << endl;
+
     for (int M = 0; M < seg_num; M++)
     {
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < physical_num; i++)
         {
-            for (int j = 0; j < 6; j++)
+            for (int j = 0; j < poly_coff_num; j++)
             {
                 int order = j - i;
                 if (order < 0)
@@ -112,7 +119,7 @@ minimum_traj::minimum_traj(
                     order = 0;
                 }
                 A_one_t(i, j) = A_one(i, j) * pow(0, order);
-                A_one_t(i + 3, j) = A_one(i + 3, j) * pow(Time(M), order);
+                A_one_t(i + physical_num, j) = A_one(i + physical_num, j) * pow(Time(M), order);
             }
         }
         A_total.block(M * 6, M * 6, 6, 6) = A_one_t;
@@ -120,37 +127,25 @@ minimum_traj::minimum_traj(
     }
 
     // init Q
-    if (minimum_type == JERK)
+    unsigned int k = minimum_type;
+
+    for (int m = k; m < poly_coff_num; m++)
     {
-        Q_one << 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 36, 72, 120,
-            0, 0, 0, 72, 192, 360,
-            0, 0, 0, 120, 360, 720;
-        // Q_one << 0, 0, 0, 0, 0, 0,
-        //     0, 0, 0, 0, 0, 0,
-        //     0, 0, 0, 0, 0, 0,
-        //     0, 0, 0, 36, 144, 360,
-        //     0, 0, 0, 144, 576, 1440,
-        //     0, 0, 0, 360, 1440, 3600;
+        for (int n = k; n < poly_coff_num; n++)
+        {
+            Q_one(m, n) = Fac(m) * Fac(n) / (Fac(m - k) * Fac(n - k) * (m + n - 2 * k + 1));
+        }
     }
-    else if (minimum_type == SNAP)
-    {
-        Q_one << 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 36, 72, 120,
-            0, 0, 0, 72, 192, 360,
-            0, 0, 0, 120, 360, 720;
-    }
+    cout << "Q_one" << endl
+         << Q_one << endl;
+
     for (int M = 0; M < seg_num; M++)
     {
-        for (int i = 3; i < 6; i++)
+        for (int m = k; m < poly_coff_num; m++)
         {
-            for (int j = 3; j < 6; j++)
+            for (int n = k; n < poly_coff_num; n++)
             {
-                Q_one_t(i, j) = Q_one(i, j) * pow(Time(M), i + j - 5);
+                Q_one_t(m, n) = Q_one(m, n) * pow(Time(M), m + n - 2 * k + 1);
             }
         }
         Q_total.block(M * 6, M * 6, 6, 6) = Q_one_t;
@@ -192,14 +187,12 @@ minimum_traj::~minimum_traj()
 {
 }
 
-bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T)
+bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int physical_num)
 {
-    C_T = Eigen::MatrixXd::Zero(2 * physical_num * seg_num, 2 * physical_num * seg_num);
-    for (int i = 0; i < 2 * physical_num * seg_num; i++)
+    C_T = Eigen::MatrixXd::Zero(all_coff_num, 2 * physical_num * seg_num);
+    for (int i = 0; i < all_coff_num; i++)
     {
-        static int tmp1 = 0;
-        static int tmp2 = 0;
-        static int tmp3 = 0;
+        int tmp[physical_num];
         // start point vel acc
         if (i < physical_num)
         {
@@ -209,17 +202,18 @@ bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T)
         // end point vel acc
         if ((i >= physical_num) && (i < 2 * physical_num))
         {
-            C_T(i, (C_T.cols() - 3) + (i - 3)) = 1;
+            C_T(i, (C_T.cols() - physical_num) + (i - physical_num)) = 1;
             continue;
         }
         // waypoints
         if ((i >= 2 * physical_num) && (i < fixed_coff_num))
         {
-            tmp1++;
+            tmp[0]++;
             C_T(i, tmp1 * physical_num) = 1;
             continue;
         }
-        // waypoint vel
+
+                // waypoint vel
         if ((i >= fixed_coff_num) && (i < fixed_coff_num + (all_coff_num - fixed_coff_num) / 2))
         {
             tmp2++;
@@ -243,7 +237,7 @@ bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T)
     return true;
 }
 
-int minimum_traj::Factorial(int x)
+int minimum_traj::Fac(int x)
 {
     int fac = 1;
     for (int i = x; i > 0; i--)

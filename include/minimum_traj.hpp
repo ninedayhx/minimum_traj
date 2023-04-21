@@ -68,10 +68,10 @@ private:
     Eigen::MatrixXd R_PF;
     Eigen::MatrixXd R_PP;
 
-    unsigned int poly_order;
+    // unsigned int poly_order;
     unsigned int poly_coff_num;
     unsigned int all_poly_coff_num;
-    unsigned int physical_;
+    // unsigned int physical_num;
     unsigned int points_num;
     unsigned int seg_num;
     unsigned int fixed_coff_num;
@@ -79,7 +79,7 @@ private:
 
     /* function */
 
-    int Factorial(int x);
+    int Fac(int x);
 
 public:
     /* data */
@@ -87,6 +87,9 @@ public:
     /* function */
     minimum_traj(
         unsigned int minimum_type,
+        unsigned int dim,
+        unsigned int poly_order,
+        unsigned int physical_num,
         const Eigen::MatrixXd &Pos,
         const Eigen::Vector3d &Start_val,
         const Eigen::Vector3d &Start_acc,
@@ -96,7 +99,7 @@ public:
 
     ~minimum_traj();
 
-    bool Cal_C_select_T(Eigen::MatrixXd &C_T);
+    bool Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int physical_num);
 
     Eigen::MatrixXd Cal_minimum_traj(Eigen::VectorXd &Time);
 

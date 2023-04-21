@@ -33,7 +33,7 @@ int main()
     end_a << 0, 0, 0;
     Time << 1, 1, 1, 1;
 
-    minimum_traj jerk(JERK, postion, start_v, end_v, start_v, start_v, Time);
+    minimum_traj jerk(JERK, 5, 3, postion, start_v, end_v, start_a, end_a, Time);
 
     plot_traj(postion, jerk.Cal_minimum_traj(Time));
 
