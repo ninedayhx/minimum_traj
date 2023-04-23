@@ -3,11 +3,14 @@
 /**
  * @brief Construct a new minimum traj::minimum traj object
  *
- * @param waypoints
- * @param start_val
- * @param start_acc
- * @param end_val
- * @param end_acc
+ * @param minimum_type
+ * @param dim
+ * @param poly_order
+ * @param physical_num
+ * @param Pos
+ * @param dStart
+ * @param dEnd
+ * @param Time
  */
 minimum_traj::minimum_traj(
     unsigned int minimum_type,
@@ -31,22 +34,22 @@ minimum_traj::minimum_traj(
     seg_num = Time.size();
 
     fixed_coff_num = physical_num * 2 + (points_num - 2) * 2;
-    all_coff_num = poly_coff_num * (2 + 2 * (points_num - 2));
+    all_coff_num = physical_num * (2 + 2 * (points_num - 2));
 
     D_fixed = Eigen::MatrixXd::Zero(fixed_coff_num, dim);
     D_P_optimal = Eigen::MatrixXd::Zero(all_coff_num - fixed_coff_num, dim);
     D_total = Eigen::MatrixXd::Zero(all_coff_num, dim);
     D_total_selected = Eigen::MatrixXd::Zero(all_coff_num, dim);
 
-    A_total = Eigen::MatrixXd::Zero(seg_num * physical_num * 2, seg_num * physical_num * 2);
+    A_total = Eigen::MatrixXd::Zero(seg_num * physical_num * 2, seg_num * poly_coff_num);
     A_one = Eigen::MatrixXd::Zero(physical_num * 2, poly_coff_num);
-    A_one_t = Eigen::MatrixXd::Zero(physical_num * 2, physical_num * 2);
+    A_one_t = Eigen::MatrixXd::Zero(physical_num * 2, poly_coff_num);
 
     Q_total = Eigen::MatrixXd::Zero(seg_num * poly_coff_num, seg_num * poly_coff_num);
     Q_one = Eigen::MatrixXd::Zero(poly_coff_num, poly_coff_num);
     Q_one_t = Eigen::MatrixXd::Zero(poly_coff_num, poly_coff_num);
 
-    C_select_T = Eigen::MatrixXd::Zero(A_total.cols(), D_total.rows());
+    C_select_T = Eigen::MatrixXd::Zero(D_total.rows(), D_total.rows());
 
     R = Eigen::MatrixXd::Zero(all_coff_num, all_coff_num);
 
@@ -78,6 +81,11 @@ minimum_traj::minimum_traj(
     // if (physical_num > 3) the jerk and snap will be zero
     D_total.row(0) = Pos_tmp.row(0);
     D_total.row(all_coff_num - physical_num) = Pos_tmp.row(points_num - 1);
+    for (int i = 0; i < points_num - 2; i++)
+    {
+        D_total.row(physical_num + i * physical_num * 2) = Pos_tmp.row(i + 1);
+        D_total.row(physical_num + i * physical_num * 2 + physical_num) = Pos_tmp.row(i + 1);
+    }
     for (int i = 0; i < physical_num - 1; i++)
     {
         D_total.row(1 + i) = dStart.row(i);
@@ -125,6 +133,8 @@ minimum_traj::minimum_traj(
         A_total.block(M * 6, M * 6, 6, 6) = A_one_t;
         A_one_t = Eigen::MatrixXd::Zero(6, 6);
     }
+    cout << "A_total" << endl
+         << A_total << endl;
 
     // init Q
     unsigned int k = minimum_type;
@@ -151,17 +161,23 @@ minimum_traj::minimum_traj(
         Q_total.block(M * 6, M * 6, 6, 6) = Q_one_t;
         Q_one_t = Eigen::MatrixXd::Zero(6, 6);
     }
+    cout << "Q_total" << endl
+         << Q_total << endl;
 
     // init select matrix
-    if (!Cal_C_select_T(C_select_T))
+    if (!Cal_C_select_T(C_select_T, physical_num))
     {
         return;
     }
+    cout << "C_select_T" << endl
+         << C_select_T << endl;
 
     D_total_selected = C_select_T * D_total;
+    D_fixed = D_total_selected.block(0, 0, fixed_coff_num, dim);
 
-    cout << "D_total_selected" << endl
-         << D_total_selected << endl;
+    cout
+        << "D_fixed" << endl
+        << D_fixed << endl;
 
     R = C_select_T.transpose() * A_total.transpose().inverse() * Q_total * A_total.inverse() * C_select_T;
 
@@ -173,67 +189,65 @@ minimum_traj::minimum_traj(
     D_P_optimal = -R_PP.inverse() * R_FP.transpose() * D_fixed;
 
     // D_total_selected.block(0, 0, fixed_coff_num, 3) = D_fixed;
-    D_total_selected.block(fixed_coff_num, 0, all_coff_num - fixed_coff_num, 3) = D_P_optimal;
+    D_total_selected.block(fixed_coff_num, 0, all_coff_num - fixed_coff_num, dim) = D_P_optimal;
+    cout << "D_total_selected" << endl
+         << D_total_selected << endl;
 
     Poly_coff_total = A_total.inverse() * C_select_T.transpose() * D_total_selected;
     // std::ofstream fout("poly_coff_all.csv", std::ios::binary);
     // fout << Poly_coff_total << std::endl;
     // fout.flush();
-    // cout << "Poly_coff_total" << endl
-    //      << Poly_coff_total << endl;
+    cout << "Poly_coff_total" << endl
+         << Poly_coff_total << endl;
 }
 
 minimum_traj::~minimum_traj()
 {
 }
 
-bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int physical_num)
+bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int phy_num)
 {
-    C_T = Eigen::MatrixXd::Zero(all_coff_num, 2 * physical_num * seg_num);
+    int tmp[10] = {};
+    cout << "test" << endl;
     for (int i = 0; i < all_coff_num; i++)
     {
-        int tmp[physical_num];
+
         // start point vel acc
-        if (i < physical_num)
+        if (i < phy_num)
         {
             C_T(i, i) = 1;
             continue;
         }
         // end point vel acc
-        if ((i >= physical_num) && (i < 2 * physical_num))
+        if ((i >= phy_num) && (i < 2 * phy_num))
         {
-            C_T(i, (C_T.cols() - physical_num) + (i - physical_num)) = 1;
+            C_T(i, (C_T.cols() - phy_num) + (i - phy_num)) = 1;
             continue;
         }
         // waypoints
-        if ((i >= 2 * physical_num) && (i < fixed_coff_num))
+        if ((i >= 2 * phy_num) && (i < fixed_coff_num))
         {
             tmp[0]++;
-            C_T(i, tmp1 * physical_num) = 1;
+            C_T(i, tmp[0] * phy_num) = 1;
             continue;
         }
 
-                // waypoint vel
-        if ((i >= fixed_coff_num) && (i < fixed_coff_num + (all_coff_num - fixed_coff_num) / 2))
+        // waypoint derivate
+        if ((i >= fixed_coff_num) && (i < all_coff_num))
         {
-            tmp2++;
-            C_T(i, 1 + tmp2 * 3) = 1;
-            continue;
-        }
-        // waypoint acc
-        if (i >= fixed_coff_num + (all_coff_num - fixed_coff_num) / 2)
-        {
-            tmp3++;
-            C_T(i, 2 + tmp3 * 3) = 1;
+            int der_cnt = (i - fixed_coff_num) % (phy_num - 1) + 1;
+            int pt_cnt = (i - fixed_coff_num) / (phy_num - 1);
+            tmp[der_cnt]++;
+            C_T(i, phy_num + der_cnt + pt_cnt * phy_num) = 1;
             continue;
         }
     }
     // cout << C_T << endl;
-    if (C_T.determinant() == 0)
-    {
-        cout << "C_select is error";
-        return false;
-    }
+    // if (C_T.determinant() == 0)
+    // {
+    //     cout << "C_select is error";
+    //     return false;
+    // }
     return true;
 }
 

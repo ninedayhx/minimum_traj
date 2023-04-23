@@ -91,10 +91,8 @@ public:
         unsigned int poly_order,
         unsigned int physical_num,
         const Eigen::MatrixXd &Pos,
-        const Eigen::Vector3d &Start_val,
-        const Eigen::Vector3d &Start_acc,
-        const Eigen::Vector3d &End_val,
-        const Eigen::Vector3d &End_acc,
+        const Eigen::MatrixXd &dStart,
+        const Eigen::MatrixXd &dEnd,
         const Eigen::VectorXd &Time);
 
     ~minimum_traj();

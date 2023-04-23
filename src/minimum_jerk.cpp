@@ -22,18 +22,22 @@ void plot_traj(Eigen::MatrixXd pos, Eigen::MatrixXd traj);
 int main()
 {
     Eigen::MatrixXd postion(3, 5);
-    Eigen::Vector3d start_v, end_v, start_a, end_a;
+    Eigen::MatrixXd dstart(4, 3), dend(4, 3);
     Eigen::VectorXd Time(4);
     postion << 0, 1, 2, 3, 5,
         0, 1, 6, 3, 6,
         1, 1, 2, 3, 2;
-    start_v << 0, 0, 0;
-    end_v << 0, 0, 0;
-    start_a << 0, 0, 0;
-    end_a << 0, 0, 0;
+    dstart << 0, 0, 0,
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0;
+    dend << 0, 0, 0,
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0;
     Time << 1, 1, 1, 1;
 
-    minimum_traj jerk(JERK, 5, 3, postion, start_v, end_v, start_a, end_a, Time);
+    minimum_traj jerk(JERK, 3, 5, 3, postion, dstart, dend, Time);
 
     plot_traj(postion, jerk.Cal_minimum_traj(Time));
 
