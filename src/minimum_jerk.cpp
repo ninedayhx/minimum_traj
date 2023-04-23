@@ -37,9 +37,11 @@ int main()
         0, 0, 0;
     Time << 1, 1, 1, 1;
 
-    minimum_traj jerk(JERK, 3, 5, 3, postion, dstart, dend, Time);
+    // minimum_traj jerk(JERK, 3, 5, 3, postion, dstart, dend, Time);
 
-    plot_traj(postion, jerk.Cal_minimum_traj(Time));
+    minimum_traj snap(SNAP, 3, 7, 4, postion, dstart, dend, Time);
+
+    plot_traj(postion, snap.Cal_minimum_traj(Time));
 
     return 0;
 }
