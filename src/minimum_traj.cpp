@@ -181,12 +181,24 @@ minimum_traj::minimum_traj(
 
     R = C_select_T.transpose() * A_total.transpose().inverse() * Q_total * A_total.inverse() * C_select_T;
 
+    cout
+        << "A_total" << endl
+        << A_total << endl
+        << "Q_total" << endl
+        << Q_total << endl
+        << "R" << endl
+        << R << endl;
+
     R_FF = R.block(0, 0, fixed_coff_num, fixed_coff_num);
     R_FP = R.block(0, fixed_coff_num, fixed_coff_num, R.cols() - fixed_coff_num);
     R_PF = R.block(fixed_coff_num, 0, R.rows() - fixed_coff_num, fixed_coff_num);
-    R_PP = R.block(fixed_coff_num, fixed_coff_num, R.rows() - fixed_coff_num, R.rows() - fixed_coff_num);
+    R_PP = R.block(fixed_coff_num, fixed_coff_num, R.rows() - fixed_coff_num, R.cols() - fixed_coff_num);
 
     D_P_optimal = -R_PP.inverse() * R_FP.transpose() * D_fixed;
+    cout << "R_PP.inverse()" << endl
+         << R_PP.inverse() << endl
+         << "D_P_optimal" << endl
+         << D_P_optimal << endl;
 
     // D_total_selected.block(0, 0, fixed_coff_num, 3) = D_fixed;
     D_total_selected.block(fixed_coff_num, 0, all_coff_num - fixed_coff_num, dim) = D_P_optimal;
@@ -207,47 +219,93 @@ minimum_traj::~minimum_traj()
 
 bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int phy_num)
 {
-    int tmp[10] = {};
-    cout << "test" << endl;
+    // int tmp[10] = {};
+    // cout << "test" << endl;
+    // for (int i = 0; i < all_coff_num; i++)
+    // {
+
+    //     // start point vel acc
+    //     if (i < phy_num)
+    //     {
+    //         C_T(i, i) = 1;
+    //         continue;
+    //     }
+    //     // end point vel acc
+    //     if ((i >= phy_num) && (i < 2 * phy_num))
+    //     {
+    //         C_T(i, (C_T.cols() - phy_num) + (i - phy_num)) = 1;
+    //         continue;
+    //     }
+    //     // waypoints
+    //     if ((i >= 2 * phy_num) && (i < fixed_coff_num))
+    //     {
+    //         tmp[0]++;
+    //         C_T(i, tmp[0] * phy_num) = 1;
+    //         continue;
+    //     }
+
+    //     // waypoint derivate
+    //     if ((i >= fixed_coff_num) && (i < all_coff_num))
+    //     {
+    //         int der_cnt = (i - fixed_coff_num) % (phy_num - 1) + 1;
+    //         int pt_cnt = (i - fixed_coff_num) / (phy_num - 1);
+    //         tmp[der_cnt]++;
+    //         C_T(i, phy_num + der_cnt + pt_cnt * phy_num) = 1;
+    //         continue;
+    //     }
+    // }
+    // // cout << C_T << endl;
+    // // if (C_T.determinant() == 0)
+    // // {
+    // //     cout << "C_select is error";
+    // //     return false;
+    // // }
+    // return true;
+    C_T = Eigen::MatrixXd::Zero(all_coff_num, 2 * physical_num * seg_num);
     for (int i = 0; i < all_coff_num; i++)
     {
-
+        int tmp[physical_num];
         // start point vel acc
-        if (i < phy_num)
+        if (i < physical_num)
         {
             C_T(i, i) = 1;
             continue;
         }
         // end point vel acc
-        if ((i >= phy_num) && (i < 2 * phy_num))
+        if ((i >= physical_num) && (i < 2 * physical_num))
         {
-            C_T(i, (C_T.cols() - phy_num) + (i - phy_num)) = 1;
+            C_T(i, (C_T.cols() - physical_num) + (i - physical_num)) = 1;
             continue;
         }
         // waypoints
-        if ((i >= 2 * phy_num) && (i < fixed_coff_num))
+        if ((i >= 2 * physical_num) && (i < fixed_coff_num))
         {
             tmp[0]++;
-            C_T(i, tmp[0] * phy_num) = 1;
+            C_T(i, tmp1 * physical_num) = 1;
             continue;
         }
 
-        // waypoint derivate
-        if ((i >= fixed_coff_num) && (i < all_coff_num))
+        // waypoint vel
+        if ((i >= fixed_coff_num) && (i < fixed_coff_num + (all_coff_num - fixed_coff_num) / 2))
         {
-            int der_cnt = (i - fixed_coff_num) % (phy_num - 1) + 1;
-            int pt_cnt = (i - fixed_coff_num) / (phy_num - 1);
-            tmp[der_cnt]++;
-            C_T(i, phy_num + der_cnt + pt_cnt * phy_num) = 1;
+            tmp2++;
+            C_T(i, 1 + tmp2 * 3) = 1;
+            continue;
+        }
+        // waypoint acc
+        if (i >= fixed_coff_num + (all_coff_num - fixed_coff_num) / 2)
+        {
+            tmp3++;
+            C_T(i, 2 + tmp3 * 3) = 1;
             continue;
         }
     }
     // cout << C_T << endl;
-    // if (C_T.determinant() == 0)
-    // {
-    //     cout << "C_select is error";
-    //     return false;
-    // }
+    if (C_T.determinant() == 0)
+    {
+        cout << "C_select is error";
+        return false;
+    }
     return true;
 }
 
