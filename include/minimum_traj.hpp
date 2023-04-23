@@ -71,7 +71,7 @@ private:
     unsigned int poly_order;
     unsigned int poly_coff_num;
     unsigned int all_poly_coff_num;
-    unsigned int physical_;
+    unsigned int physical_num;
     unsigned int points_num;
     unsigned int seg_num;
     unsigned int fixed_coff_num;

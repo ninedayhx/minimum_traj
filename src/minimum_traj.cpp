@@ -170,6 +170,13 @@ minimum_traj::minimum_traj(
 
     R = C_select_T.transpose() * A_total.transpose().inverse() * Q_total * A_total.inverse() * C_select_T;
 
+    cout << "A_total" << endl
+         << A_total << endl
+         << "Q_total" << endl
+         << Q_total << endl
+         << "R" << endl
+         << R << endl;
+
     R_FF = R.block(0, 0, fixed_coff_num, fixed_coff_num);
     R_FP = R.block(0, fixed_coff_num, fixed_coff_num, R.cols() - fixed_coff_num);
     R_PF = R.block(fixed_coff_num, 0, R.rows() - fixed_coff_num, fixed_coff_num);
