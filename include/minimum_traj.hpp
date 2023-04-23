@@ -99,7 +99,7 @@ public:
 
     bool Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int physical_num);
 
-    Eigen::MatrixXd Cal_minimum_traj(Eigen::VectorXd &Time);
+    Eigen::MatrixXd Cal_minimum_traj(Eigen::VectorXd &Time, int dim);
 
     Eigen::MatrixXd Get_Poly_coff_total();
 };

@@ -167,6 +167,7 @@ minimum_traj::minimum_traj(
 
 minimum_traj::~minimum_traj()
 {
+    cout << "delete" << endl;
 }
 
 bool minimum_traj::Cal_C_select_T(Eigen::MatrixXd &C_T, unsigned int phy_num)
@@ -232,10 +233,10 @@ int minimum_traj::Fac(int x)
     return fac;
 }
 
-Eigen::MatrixXd minimum_traj::Cal_minimum_traj(Eigen::VectorXd &Time)
+Eigen::MatrixXd minimum_traj::Cal_minimum_traj(Eigen::VectorXd &Time, int dim)
 {
     unsigned int seg_num = Time.size();
-    Eigen::MatrixXd traj_res = Eigen::MatrixXd::Zero(3, 100 * seg_num);
+    Eigen::MatrixXd traj_res = Eigen::MatrixXd::Zero(dim, 100 * seg_num);
     for (int i = 0; i < seg_num; i++)
     {
         for (int j = 0; j < 100; j++)
@@ -243,9 +244,10 @@ Eigen::MatrixXd minimum_traj::Cal_minimum_traj(Eigen::VectorXd &Time)
             double t = j * 0.01;
             for (int k = 0; k < 6; k++)
             {
-                traj_res(0, i * 100 + j) += Poly_coff_total(i * 6 + k, 0) * pow(t, k);
-                traj_res(1, i * 100 + j) += Poly_coff_total(i * 6 + k, 1) * pow(t, k);
-                traj_res(2, i * 100 + j) += Poly_coff_total(i * 6 + k, 2) * pow(t, k);
+                for (int d = 0; d < dim; d++)
+                {
+                    traj_res(d, i * 100 + j) += Poly_coff_total(i * 6 + k, d) * pow(t, k);
+                }
             }
         }
     }
